@@ -57,10 +57,18 @@ interface Product {
 } 
 ```
 
+Итерфейс элемента корзины, включает в себя продукт и индекс продукта в корзине.
+```
+interface CartItem {
+	product: Product;
+	index: number;
+} 
+```
+
 Интерфейс данных заказа, включает в себя массив элементов корзины, метод оплаты, адрес, электронную почту, номер телефона и стоимость заказа.
 ```
 interface Order {
-	items: string[];
+	items: CartItem[];
 	payment: string;
 	address: string;
 	email: string;
@@ -98,7 +106,7 @@ interface IProductModel {
 Интерфейс корзины, включает в себя список товаров, общую сумму, а также функции добавления товара, удаления товара, получения списка всех товаров, проверку есть ли такой товар в корзине, получение общей суммы корзины, и очистки корзины.
 ```
 interface ICartModel {
-	items: Product[];
+	items: CartItem[];
 	purchaseAmount: number;
 	addItem: (product: Product) => void;
 	removeItem: (productId: string) => void;
@@ -107,6 +115,21 @@ interface ICartModel {
 	getTotalPrice: () => number;
 	clear: () => void;
 } 
+```
+
+Интерфейс заказа, включает в себя сам заказ, функции заполнения данных заказа: добавление товаров, стоимости заказа, метода оплаты, адреса, электронной почты, номера телефона, получение и очистки заказа.
+```
+interface IOrderModel {
+	order: Order;
+	setItems: (items: CartItem[]) => void;
+	setTotal: (total: number) => void;
+	setPayment: (payment: string) => void;
+	setAddress: (address: string) => void;
+	setEmail: (email: string) => void;
+	setPhone: (phone: string) => void;
+	getOrder: () => Order;
+    clear: () => void;
+}
 ```
 
 Интерфейс модальных окон, включает в себя персональный ID окна а также функции окрытия, закрытия окна и отображения контента.
@@ -146,23 +169,148 @@ interface IEvents {
 
 ### Модели
 
-- class ProductModel реализующий интерфейс IProductModel, представляет собой модель товаров
-- class CartModel реализующий интерфейс ICartModel, представляет собой модель корзины
-- class ApiLarek реализующий интерфейс ApiClient, представляет собой модель взаимодействия с сервером
+#### class ProductModel
+
+Реализует интерфейс IProductModel, представляет собой модель товаров с полем products для списка товаров и методами добавления списка товаров (setProducts), получение списка товаров (getProducts) и получение товара по названию (getProductByTitle).
+
+```
+class ProductModel implements IProductModel{
+    products: Product[];
+	setProducts: (products: Product[]) => void;
+	getProducts: () => Product[];
+	getProductByTitle: (id: string) => Product | undefined;
+} 
+```
+
+#### class CartModel 
+
+Реализует интерфейс ICartModel, представляет собой модель корзины с полями списка товаров (items) и  общей суммой корзины (purchaseAmount), а также методами добавления товара (addItem), удаления товара (removeItem), получения списка всех товаров (getItems), проверку есть ли такой товар в корзине (hasItem), получение общей суммы корзины (getTotalPrice), и очистки корзины (clear).
+```
+class CartModel implements ICartModel{
+	items: CartItem[];
+	purchaseAmount: number;
+	addItem: (product: Product) => void;
+	removeItem: (productId: string) => void;
+	getItems: () => Product[];
+	hasItem: (productId: string) => boolean;
+	getTotalPrice: () => number;
+	clear: () => void;
+} 
+```
+
+#### class OrderModel
+
+Реализует интерфейс IOrderModel, представляет собой модель товара с полем самого заказа (order), а также методами заполнения данных заказа: добавление товаров(setItems), стоимости заказа (setTotal), метода оплаты (setPayment), адреса (setAddress), электронной почты (setEmail), номера телефона (setPhone), получение заказа (getOrder) и очистки заказа (clear).
+```
+class OrderModel implements IOrderModel {
+	order: Order;
+	setItems: (items: CartItem[]) => void;
+	setTotal: (total: number) => void;
+	setPayment: (payment: string) => void;
+	setAddress: (address: string) => void;
+	setEmail: (email: string) => void;
+	setPhone: (phone: string) => void;
+	getOrder: () => Order;
+    clear: () => void;
+}
+```
+
+#### class ApiLarek 
+
+Реализует интерфейс ApiClient, представляет собой модель взаимодействия с сервером. Имеет поле ссылки на картинку (imgURL), а также методы получения карточек с сервера (getProducts) и оформления заказа (createOrder).
+```
+export class ApiLarek extends Api implements ApiClient {
+    imgURL: string;
+	getProducts(): Promise<Product[]>;
+	createOrder(order: Order): Promise<OrderResponse>;
+} 
+```
 
 ### Представление
 
-- class PageView реализующий интерфейс IPageView, представляет собой отрисовку страницы
-- class Modal реализующий интерфейс IModal, общий класс для всех модальных окон
-- class ProductModal наследует класс Modal, реализует модальное окно подробностей о товаре
-- class BasketModal наследует класс Modal, реализует модальное окно корзины
-- class OrderModal наследует класс Modal, реализует модальное окно выбора типа оплаты и адреса
-- class ContactsModal наследует класс Modal, реализует модальное окно предоставления контактов: электронной почты и номера телефона
-- class SuccessModal наследует класс Modal, реализует модальное окно успешного оформления заказа, отображает также общую сумму покупки
+#### class PageView 
+
+Реализует интерфейс IPageView, представляет собой отрисовку страницы, имеет поля gallery для отрисовки карточек товара и cardCatalog прототип разметки карточки продукта, а также метод отрисовки страницы (renderContent). 
+
+```
+class PageView implements IPageView  {
+    gallery: HTMLElement;
+    cardCatalog: HTMLTemplateElement;
+    renderContent: (products: Product[]) => void;
+}
+```
+
+#### class Modal 
+
+Реализует интерфейс IModal, общий класс для всех модальных окон. Имеет поля основного HTML-элемент модального окна (modalElement), HTML-элемента контекта отображаемого окна (contentElement), персональный ID окна (modalId), а также методы окрытия (open), закрытия окна (close) и отображения контента (setContent).
+```
+class Modal implements IModal {
+    modalElement: HTMLElement;
+    contentElement: HTMLElement;
+    modalId: string;     
+    open:(...args: any[]) => void;
+    close:() => void;
+    setContent: (content: HTMLElement) => void;
+}
+```
+
+#### class ProductModal 
+
+Наследует класс Modal, реализует модальное окно подробностей о товаре.
+```
+class ProductModal extends Modal {
+    open:(...args: any[]) => void;
+}
+```
+
+#### class BasketModal 
+
+Наследует класс Modal, реализует модальное окно корзины
+```
+class BasketModal extends Modal {
+    open:(...args: any[]) => void;
+}
+```
+
+#### class OrderModal 
+
+Наследует класс Modal, реализует модальное окно выбора типа оплаты и адреса
+```
+class OrderModal extends Modal {
+    open:(...args: any[]) => void;
+}
+```
+
+#### class ContactsModal 
+
+Наследует класс Modal, реализует модальное окно предоставления контактов: электронной почты и номера телефона
+```
+class ContactsModal extends Modal {
+    open:(...args: any[]) => void;
+}
+```
+
+#### class SuccessModal 
+
+Наследует класс Modal, реализует модальное окно успешного оформления заказа, отображает также общую сумму покупки
+```
+class SuccessModal extends Modal {
+    open:(...args: any[]) => void;
+}
+```
 
 ### Обработчик событий
 
-Класс EventEmitter реализующий интерфейс IEvents, представляет собой обработчика событий.
+Класс EventEmitter реализующий интерфейс IEvents, представляет собой обработчика событий. Имеет поле events представляющее собой массив событий и подписанных на это событие слушателей, также имеет методы установки (on) и снятия (off) слушателей события, вызова события (emit) и создания функцию-триггер (trigger).
+```
+class EventEmitter implements IEvents {
+    events: Map<string, Set<Function>>;
+	on: (event: string, listener: (...args: any[]) => void) => void;
+	off: (event: string, listener: (...args: any[]) => void) => void;
+	emit: (event: string, data?: any[]) => void;
+	trigger: (event: string, context?: any) => (...args: any[]) => void;
+}
+```
 
 Возможные события:
 - cart:update — обнавление корзины

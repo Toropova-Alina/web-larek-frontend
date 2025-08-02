@@ -8,9 +8,15 @@ export interface Product {
 	price: number | null;
 }
 
+// Элемент корзины
+export interface CartItem {
+	product: Product;
+	index: number;
+}
+
 // Данные заказа
 export interface Order {
-	items: string[];
+	items: CartItem[];
 	payment: string;
 	address: string;
 	email: string;
@@ -40,13 +46,26 @@ export interface IProductModel {
 
 // Модель корзины
 export interface ICartModel {
-	items: Product[];
+	items: CartItem[];
 	purchaseAmount: number;
 	addItem: (product: Product) => void;
 	removeItem: (productId: string) => void;
 	getItems: () => Product[];
 	hasItem: (productId: string) => boolean;
 	getTotalPrice: () => number;
+	clear: () => void;
+}
+
+// Модель заказа
+export interface IOrderModel {
+	order: Order;
+	setItems: (items: CartItem[]) => void;
+	setTotal: (total: number) => void;
+	setPayment: (payment: string) => void;
+	setAddress: (address: string) => void;
+	setEmail: (email: string) => void;
+	setPhone: (phone: string) => void;
+	getOrder: () => Order;
 	clear: () => void;
 }
 
