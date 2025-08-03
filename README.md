@@ -117,25 +117,23 @@ interface ICartModel {
 } 
 ```
 
-Интерфейс заказа, включает в себя сам заказ, функции заполнения данных заказа: добавление товаров, стоимости заказа, метода оплаты, адреса, электронной почты, номера телефона, получение и очистки заказа.
+Интерфейс заказа, включает в себя сам заказ, функции заполнения данных заказа: добавление метода оплаты, адреса, электронной почты, номера телефона, получение и очистки заказа, а также валидации заказа.
 ```
 interface IOrderModel {
-	order: Order;
-	setItems: (items: CartItem[]) => void;
-	setTotal: (total: number) => void;
+	order?: Order;
 	setPayment: (payment: string) => void;
 	setAddress: (address: string) => void;
 	setEmail: (email: string) => void;
 	setPhone: (phone: string) => void;
-	getOrder: () => Order;
+	getOrder: (items: CartItem[], total: number) => Order;
     clear: () => void;
+    validate: () => boolean;
 }
 ```
 
-Интерфейс модальных окон, включает в себя персональный ID окна а также функции окрытия, закрытия окна и отображения контента.
+Интерфейс модальных окон, включает в себя функции окрытия, закрытия окна и отображения контента.
 ```
-interface IModal {
-    modalId: string;     
+interface IModal {  
     open:(...args: any[]) => void;
     close:() => void;
     setContent: (content: HTMLElement) => void;
@@ -200,18 +198,17 @@ class CartModel implements ICartModel{
 
 #### class OrderModel
 
-Реализует интерфейс IOrderModel, представляет собой модель товара с полем самого заказа (order), а также методами заполнения данных заказа: добавление товаров(setItems), стоимости заказа (setTotal), метода оплаты (setPayment), адреса (setAddress), электронной почты (setEmail), номера телефона (setPhone), получение заказа (getOrder) и очистки заказа (clear).
+Реализует интерфейс IOrderModel, представляет собой модель товара с полем самого заказа (order), а также методами заполнения данных заказа: добавление метода оплаты (setPayment), адреса (setAddress), электронной почты (setEmail), номера телефона (setPhone), получение заказа (getOrder) и очистки заказа (clear), а также валидации заказа (validate).
 ```
 class OrderModel implements IOrderModel {
-	order: Order;
-	setItems: (items: CartItem[]) => void;
-	setTotal: (total: number) => void;
+	order?: Order;
 	setPayment: (payment: string) => void;
 	setAddress: (address: string) => void;
 	setEmail: (email: string) => void;
 	setPhone: (phone: string) => void;
-	getOrder: () => Order;
+	getOrder: (items: CartItem[], total: number) => Order;
     clear: () => void;
+    validate: () => boolean;
 }
 ```
 
@@ -242,62 +239,78 @@ class PageView implements IPageView  {
 
 #### class Modal 
 
-Реализует интерфейс IModal, общий класс для всех модальных окон. Имеет поля основного HTML-элемент модального окна (modalElement), HTML-элемента контекта отображаемого окна (contentElement), персональный ID окна (modalId), а также методы окрытия (open), закрытия окна (close) и отображения контента (setContent).
+Реализует интерфейс IModal, общий класс для всех модальных окон. Имеет поля основного HTML-элемент модального окна (modalElement) и HTML-элемента контента отображаемого окна (contentElement), а также методы окрытия (open), закрытия окна (close) и отображения контента (setContent).
 ```
 class Modal implements IModal {
     modalElement: HTMLElement;
-    contentElement: HTMLElement;
-    modalId: string;     
+    contentElement: HTMLElement;     
     open:(...args: any[]) => void;
     close:() => void;
     setContent: (content: HTMLElement) => void;
 }
 ```
 
-#### class ProductModal 
+#### class ProductView  
 
-Наследует класс Modal, реализует модальное окно подробностей о товаре.
+Реализует независимое представление подробностей о товаре. Имеет поля отображаемого продукта (product) и HTML-элемента, который хранит и представляет визуальное содержимое компонента для дальнейшей вставки (container), а также метод, который подготавливает и возвращает HTML-элемент, отображающий текущее представление компонента, для дальнейшего отображения (render).
 ```
-class ProductModal extends Modal {
-    open:(...args: any[]) => void;
+class ProductView {
+    product: Product;
+    container: HTMLElement;
+    render: (basket: CartModel) => HTMLElement;
 }
 ```
 
-#### class BasketModal 
+#### class BasketView 
 
-Наследует класс Modal, реализует модальное окно корзины
+Реализует независимое представление корзины. Имеет поля корзины (basket) и HTML-элемента, который хранит и представляет визуальное содержимое компонента для дальнейшей вставки (container), а также метод, который подготавливает и возвращает HTML-элемент, отображающий текущее представление компонента, для дальнейшего отображения (render). onProceed() в render это колбек для перехода к оформлению заказа.
 ```
-class BasketModal extends Modal {
-    open:(...args: any[]) => void;
+class BasketView {
+    basket: CartModel;
+    сontainer: HTMLElement;
+    render: (onProceed: () => void) => HTMLElement;
 }
 ```
 
-#### class OrderModal 
+#### class OrderView 
 
-Наследует класс Modal, реализует модальное окно выбора типа оплаты и адреса
+Реализует независимое представление выбора типа оплаты и адреса. Имеет поля типа оплаты (payment), адреса (address), HTML-элемента, который хранит и представляет визуальное содержимое компонента для дальнейшей вставки (container) и модель заказа (orderModel), а также метод, который подготавливает и возвращает HTML-элемент, отображающий текущее представление компонента, для дальнейшего отображения (render). onProceed() в render это колбек для перехода к следующему шагу оформления заказа.
 ```
-class OrderModal extends Modal {
-    open:(...args: any[]) => void;
+class OrderView {
+    payment: string;
+	address: string;
+    сontainer: HTMLElement;
+    orderModel: OrderModel;
+    render: (onProceed: () => void) => HTMLElement;
 }
 ```
 
-#### class ContactsModal 
+#### class ContactsView 
 
-Наследует класс Modal, реализует модальное окно предоставления контактов: электронной почты и номера телефона
+Реализует независимое представление предоставления контактов: электронной почты и номера телефона. Имеет поля электронной почты (email), номера телефона (phone) и HTML-элемента, который хранит и представляет визуальное содержимое компонента для дальнейшей вставки (container) и общую модель заказа (orderModel), а также метод, который подготавливает и возвращает HTML-элемент, отображающий текущее представление компонента, для дальнейшего отображения (render). onComplete() в render это колбек для перехода к последнему модальному окну оформления заказа.
 ```
-class ContactsModal extends Modal {
-    open:(...args: any[]) => void;
+class ContactsView {
+    email: string;
+    phone: string;
+    сontainer: HTMLElement;
+    orderModel: OrderModel;
+    render: (onComplete: () => void) => HTMLElement;
 }
 ```
 
-#### class SuccessModal 
+#### class SuccessView
 
-Наследует класс Modal, реализует модальное окно успешного оформления заказа, отображает также общую сумму покупки
+Реализует независимое представление успешного оформления заказа, отображает также общую сумму покупки. Имеет поля итоговой суммы заказа (total) и HTML-элемента, который хранит и представляет визуальное содержимое компонента для дальнейшей вставки (container),а также метод, который подготавливает и возвращает HTML-элемент, отображающий текущее представление компонента, для дальнейшего отображения (render).
 ```
-class SuccessModal extends Modal {
-    open:(...args: any[]) => void;
+class SuccessView {
+    total: number;
+    сontainer: HTMLElement;
+    render: (basket: CartModel) => HTMLElement;
 }
 ```
+
+Все классы представлений: ProductView, BasketView, OrderView, ContactsView и SuccessView создают через 
+render() HTML-элемент, который передаётся экземпляру Modal через метод setContent().
 
 ### Обработчик событий
 

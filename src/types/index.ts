@@ -58,20 +58,18 @@ export interface ICartModel {
 
 // Модель заказа
 export interface IOrderModel {
-	order: Order;
-	setItems: (items: CartItem[]) => void;
-	setTotal: (total: number) => void;
+	order?: Order;
 	setPayment: (payment: string) => void;
 	setAddress: (address: string) => void;
 	setEmail: (email: string) => void;
 	setPhone: (phone: string) => void;
-	getOrder: () => Order;
+	getOrder: (items: CartItem[], total: number) => Order;
 	clear: () => void;
+	validate: () => boolean;
 }
 
 // Модальные окна
 export interface IModal {
-	modalId: string;
 	open: (...args: any[]) => void;
 	close: () => void;
 	setContent: (content: HTMLElement) => void;
