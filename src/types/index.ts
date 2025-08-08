@@ -16,7 +16,7 @@ export interface CartItem {
 
 // Данные заказа
 export interface Order {
-	items: CartItem[];
+	items: string[];
 	payment: string;
 	address: string;
 	email: string;
@@ -58,14 +58,15 @@ export interface ICartModel {
 
 // Модель заказа
 export interface IOrderModel {
-	order?: Order;
+	order: Partial<Order>;
 	setPayment: (payment: string) => void;
 	setAddress: (address: string) => void;
 	setEmail: (email: string) => void;
 	setPhone: (phone: string) => void;
 	getOrder: (items: CartItem[], total: number) => Order;
 	clear: () => void;
-	validate: () => boolean;
+	validateOrder: () => string[];
+	validateContacts: () => string[];
 }
 
 // Модальные окна
