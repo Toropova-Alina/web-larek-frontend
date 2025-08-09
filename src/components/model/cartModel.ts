@@ -16,9 +16,12 @@ export class CartModel implements ICartModel {
 	}
 
 	removeItem(productId: string) {
-		const item = this.items.find(i => i.product.id === productId);
+		const item = this.items.find((i) => i.product.id === productId);
 		this.items = this.items.filter((item) => item.product.id !== productId);
 		this.purchaseAmount -= item.product.price;
+		this.items.forEach((item, idx) => {
+			item.index = idx;
+		});
 	}
 
 	getItems(): Product[] {

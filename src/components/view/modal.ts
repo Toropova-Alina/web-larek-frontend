@@ -1,4 +1,4 @@
-import { Product, IModal } from '../../types';
+import { Product, CartItem, IModal } from '../../types';
 import { addCategory } from './pageView';
 import { CartModel } from '../model/cartModel';
 import { EventEmitter } from '../eventEmitter';
@@ -35,54 +35,47 @@ export class Modal implements IModal {
 }
 
 export class ProductView {
-	product: Product;
 	container: HTMLElement;
 	eventEmitter: EventEmitter;
 
-	constructor(product: Product, eventEmitter: EventEmitter) {
-		this.product = product;
+	constructor(eventEmitter: EventEmitter) {
 		this.eventEmitter = eventEmitter;
 	}
 
-	render(basket: CartModel): HTMLElement {
+	render(product: Product, inBasket: boolean): HTMLElement {
 		const tpl = document.getElementById('card-preview') as HTMLTemplateElement;
 		const card = tpl.content.firstElementChild.cloneNode(true) as HTMLElement;
 
 		const categoryEl = card.querySelector('.card__category') as HTMLElement;
-		categoryEl.textContent = this.product.category;
-		categoryEl.className = `card__category ${addCategory(
-			this.product.category
-		)}`;
+		categoryEl.textContent = product.category;
+		categoryEl.className = `card__category ${addCategory(product.category)}`;
 
 		const titleEl = card.querySelector('.card__title') as HTMLElement;
-		titleEl.textContent = this.product.title;
+		titleEl.textContent = product.title;
 
 		const descEl = card.querySelector('.card__text') as HTMLElement;
-		descEl.textContent = this.product.description || '';
+		descEl.textContent = product.description || '';
 
 		const priceEl = card.querySelector('.card__price') as HTMLElement;
-		if (this.product.price !== null)
-			priceEl.textContent = `${this.product.price} синапсов`;
+		if (product.price !== null)
+			priceEl.textContent = `${product.price} синапсов`;
 		else priceEl.textContent = `Бесценно`;
 
 		const imgEl = card.querySelector('.card__image') as HTMLImageElement;
-		imgEl.src = this.product.image;
-		imgEl.alt = this.product.title;
+		imgEl.src = product.image;
+		imgEl.alt = product.title;
 
 		const btn = card.querySelector('button.card__button') as HTMLButtonElement;
-		btn.textContent = basket.hasItem(this.product.id)
-			? 'Удалить из корзины'
-			: 'Купить';
+		btn.textContent = inBasket ? 'Удалить из корзины' : 'Купить';
 
 		btn.onclick = () => {
-			if (basket.hasItem(this.product.id)) {
-				this.eventEmitter.emit('cart:remove', this.product.id);
+			if (inBasket) {
+				this.eventEmitter.emit('cart:remove', product.id);
 				btn.textContent = 'Купить';
 			} else {
-				this.eventEmitter.emit('cart:add', this.product);
+				this.eventEmitter.emit('cart:add', product);
 				btn.textContent = 'Удалить из корзины';
 			}
-			this.eventEmitter.emit('cart:update', basket.getItems().length);
 		};
 
 		this.container = card;
@@ -90,17 +83,54 @@ export class ProductView {
 	}
 }
 
-export class BasketView {
-	basket: CartModel;
+class BasketItemView {
 	container: HTMLElement;
 	eventEmitter: EventEmitter;
 
-	constructor(basket: CartModel, eventEmitter: EventEmitter) {
-		this.basket = basket;
+	constructor(eventEmitter: EventEmitter) {
 		this.eventEmitter = eventEmitter;
 	}
 
-	render(onProceed: () => void): HTMLElement {
+	render(item: CartItem): HTMLElement {
+		const tpl = document.getElementById('card-basket') as HTMLTemplateElement;
+		const basketIt = tpl.content.firstElementChild.cloneNode(
+			true
+		) as HTMLElement;
+
+		basketIt.querySelector('.basket__item-index').textContent = String(
+			item.index + 1
+		);
+		basketIt.querySelector('.card__title').textContent =
+			item.product.title;
+
+		const priceEl = basketIt.querySelector('.card__price');
+		if (item.product.price !== null) {
+			priceEl.textContent = `${item.product.price} синапсов`;
+		} else {
+			priceEl.textContent = `Бесценно`;
+		}
+
+		const deleteBtn = basketIt.querySelector(
+			'.basket__item-delete'
+		) as HTMLElement;
+		deleteBtn.addEventListener('click', () => {
+			this.eventEmitter.emit('cart:remove', item.product.id);
+		});
+		
+		this.container = basketIt;
+		return this.container;
+	}
+}
+
+export class BasketView {
+	container: HTMLElement;
+	eventEmitter: EventEmitter;
+
+	constructor(eventEmitter: EventEmitter) {
+		this.eventEmitter = eventEmitter;
+	}
+
+	render(basket: CartModel, onProceed: () => void): HTMLElement {
 		const tpl = document.getElementById('basket') as HTMLTemplateElement;
 		const basketEl = tpl.content.firstElementChild.cloneNode(
 			true
@@ -109,35 +139,15 @@ export class BasketView {
 
 		list.innerHTML = '';
 
-		this.basket.items.forEach((item) => {
-			const liTpl = document.getElementById(
-				'card-basket'
-			) as HTMLTemplateElement;
-			const li = liTpl.content.firstElementChild.cloneNode(true) as HTMLElement;
-			li.querySelector('.basket__item-index').textContent = String(
-				item.index + 1
-			);
-			li.querySelector('.card__title').textContent = item.product.title;
-
-			if (item.product.price !== null)
-				li.querySelector(
-					'.card__price'
-				).textContent = `${item.product.price} синапсов`;
-			else li.querySelector('.card__price').textContent = `Бесценно`;
-
-			const deleteBtn = li.querySelector('.basket__item-delete') as HTMLElement;
-			deleteBtn.addEventListener('click', () => {
-				this.eventEmitter.emit('cart:remove', item.product.id);
-				this.eventEmitter.emit('cart:update', this.basket.getItems().length);
-				this.render(onProceed);
-			});
-
+		basket.items.forEach((item) => {
+			const itemView = new BasketItemView(this.eventEmitter);
+			const li = itemView.render(item);
 			list.appendChild(li);
 		});
 
 		basketEl.querySelector(
 			'.basket__price'
-		).textContent = `${this.basket.getTotalPrice()} синапсов`;
+		).textContent = `${basket.getTotalPrice()} синапсов`;
 
 		const proceedBtn = basketEl.querySelector('.button');
 		proceedBtn.addEventListener('click', () => {
@@ -150,16 +160,22 @@ export class BasketView {
 }
 
 export class OrderView {
-	payment: string;
-	address: string;
 	container: HTMLElement;
 	eventEmitter: EventEmitter;
+	nextBtn: HTMLButtonElement;
+	errorSpan: HTMLElement;
 
 	constructor(eventEmitter: EventEmitter) {
 		this.eventEmitter = eventEmitter;
 	}
 
-	render(onProceed: () => void): HTMLElement {
+	render(
+		payment: string,
+		address: string,
+		isValid: boolean,
+		errorMessage: string,
+		onProceed: () => void
+	): HTMLElement {
 		const tpl = document.getElementById('order') as HTMLTemplateElement;
 		const orderForm = tpl.content.firstElementChild.cloneNode(
 			true
@@ -172,64 +188,65 @@ export class OrderView {
 		);
 		const addressInput =
 			orderForm.querySelector<HTMLInputElement>('input[type="text"]');
-		const nextBtn =
-			orderForm.querySelector<HTMLButtonElement>('.order__button');
-		const errorSpan = orderForm.querySelector<HTMLElement>('.form__errors');
+		this.nextBtn = orderForm.querySelector<HTMLButtonElement>('.order__button');
+		this.errorSpan = orderForm.querySelector<HTMLElement>('.form__errors');
 
 		paymentButtons.forEach((button) => {
 			button.addEventListener('click', () => {
-				this.payment = button.textContent?.trim() || null;
+				payment = button.textContent?.trim() || null;
 				paymentButtons.forEach((btn) => {
 					btn.classList.toggle('button_alt-active', btn === button);
 				});
-				errorSpan.textContent = '';
 				this.eventEmitter.emit('order:update', {
-					payment: this.payment,
-					address: this.address,
+					payment: payment,
+					address: address,
 				});
 			});
 		});
 
 		addressInput.addEventListener('input', () => {
-			this.address = addressInput.value.trim();
-			errorSpan.textContent = '';
+			address = addressInput.value.trim();
 			this.eventEmitter.emit('order:update', {
-				payment: this.payment,
-				address: this.address,
+				payment: payment,
+				address: address,
 			});
 		});
 
-		nextBtn.disabled = true;
+		this.nextBtn.disabled = true;
+		this.validation(isValid, errorMessage);
 
-		this.eventEmitter.on(
-			'order:validation',
-			(data: { isValid: boolean; errorMessage: string }) => {
-				nextBtn.disabled = !data.isValid;
-				errorSpan.textContent = data.isValid ? '' : data.errorMessage;
-			}
-		);
-
-		nextBtn.addEventListener('click', (e) => {
+		this.nextBtn.addEventListener('click', (e) => {
 			e.preventDefault();
-			errorSpan.textContent = '';
+			this.errorSpan.textContent = '';
 			onProceed();
 		});
 
 		return this.container;
 	}
+
+	validation(isValid: boolean, errorMessage: string): void {
+		this.nextBtn.disabled = !isValid;
+		this.errorSpan.textContent = isValid ? '' : errorMessage;
+	}
 }
 
 export class ContactsView {
-	email: string;
-	phone: string;
 	container: HTMLElement;
 	eventEmitter: EventEmitter;
+	submitBtn: HTMLButtonElement;
+	errorSpan: HTMLElement;
 
 	constructor(eventEmitter: EventEmitter) {
 		this.eventEmitter = eventEmitter;
 	}
 
-	render(onComplete: () => void): HTMLElement {
+	render(
+		email: string,
+		phone: string,
+		isValid: boolean,
+		errorMessage: string,
+		onComplete: () => void
+	): HTMLElement {
 		const tpl = document.getElementById('contacts') as HTMLTemplateElement;
 		const contactsForm = tpl.content.firstElementChild.cloneNode(
 			true
@@ -243,39 +260,32 @@ export class ContactsView {
 		const phoneInput = contactsForm.querySelector<HTMLInputElement>(
 			'input[name="phone"]'
 		);
-		const submitBtn = contactsForm.querySelector<HTMLButtonElement>(
+		this.submitBtn = contactsForm.querySelector<HTMLButtonElement>(
 			'button[type="submit"], .button'
 		);
-		const errorSpan = contactsForm.querySelector<HTMLElement>('.form__errors');
+		this.errorSpan = contactsForm.querySelector<HTMLElement>('.form__errors');
 
-		submitBtn.disabled = true;
+		this.submitBtn.disabled = true;
 
 		emailInput.addEventListener('input', () => {
-			this.email = emailInput.value.trim();
-			errorSpan.textContent = '';
+			email = emailInput.value.trim();
 			this.eventEmitter.emit('contacts:update', {
-				email: this.email,
-				phone: this.phone,
+				email: email,
+				phone: phone,
 			});
 		});
 
 		phoneInput.addEventListener('input', () => {
-			this.phone = phoneInput.value.trim();
-			errorSpan.textContent = '';
+			phone = phoneInput.value.trim();
 			this.eventEmitter.emit('contacts:update', {
-				email: this.email,
-				phone: this.phone,
+				email: email,
+				phone: phone,
 			});
 		});
 
-		this.eventEmitter.on(
-			'contacts:validation',
-			(data: { isValid: boolean; errorMessage: string }) => {
-				submitBtn.disabled = !data.isValid;
-				errorSpan.textContent = data.isValid ? '' : data.errorMessage;
-			}
-		);
-		submitBtn.addEventListener('click', async (e) => {
+		this.validation(isValid, errorMessage);
+
+		this.submitBtn.addEventListener('click', async (e) => {
 			e.preventDefault();
 			this.eventEmitter.emit('order:submit');
 			onComplete();
@@ -283,19 +293,22 @@ export class ContactsView {
 
 		return this.container;
 	}
+
+	validation(isValid: boolean, errorMessage: string): void {
+		this.submitBtn.disabled = !isValid;
+		this.errorSpan.textContent = isValid ? '' : errorMessage;
+	}
 }
 
 export class SuccessView {
-	total: number;
 	container: HTMLElement;
 	eventEmitter: EventEmitter;
 
-	constructor(total: number, eventEmitter: EventEmitter) {
-		this.total = total;
+	constructor(eventEmitter: EventEmitter) {
 		this.eventEmitter = eventEmitter;
 	}
 
-	render(): HTMLElement {
+	render(total: number): HTMLElement {
 		const tpl = document.getElementById('success') as HTMLTemplateElement;
 		const successNode = tpl.content.firstElementChild.cloneNode(
 			true
@@ -304,7 +317,7 @@ export class SuccessView {
 		const descriptionEl = successNode.querySelector(
 			'.order-success__description'
 		);
-		descriptionEl.textContent = `Списано ${this.total} синапсов`;
+		descriptionEl.textContent = `Списано ${total} синапсов`;
 
 		const closeBtn = successNode.querySelector<HTMLButtonElement>(
 			'.order-success__close'

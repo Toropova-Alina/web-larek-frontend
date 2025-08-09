@@ -79,7 +79,7 @@ export interface IModal {
 // Представление страницы
 export interface IPageView {
 	gallery: HTMLElement;
-	cardCatalog: HTMLTemplateElement;
+	basketBtn: HTMLButtonElement;
 	renderContent: (products: Product[]) => void;
 }
 

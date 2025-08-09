@@ -17,16 +17,17 @@ import {
 } from './components/view/modal';
 
 const api = new ApiLarek(CDN_URL, API_URL);
-const page = new PageView(document.body);
 const productModel = new ProductModel();
 const cartModel = new CartModel();
 const orderModel = new OrderModel();
 const eventEmitter = new EventEmitter();
+const page = new PageView(eventEmitter, document.body);
 const modal = new Modal('.modal');
-const basketView = new BasketView(cartModel, eventEmitter);
+const productView = new ProductView(eventEmitter);
+const basketView = new BasketView(eventEmitter);
 const orderView = new OrderView(eventEmitter);
 const contactsView = new ContactsView(eventEmitter);
-const successView = new SuccessView(0, eventEmitter);
+const successView = new SuccessView(eventEmitter);
 
 let modalCurrentView:
 	| 'product'
@@ -36,57 +37,68 @@ let modalCurrentView:
 	| 'success'
 	| null = null;
 
-// Отображение списка товаров и подробностей о товаре
+// Отображение списка товаров
 async function loadAndShowProducts() {
-	const galleryEl = document.querySelector('.gallery');
 	const productsApi = await api.getProducts();
 	page.renderContent(productsApi);
 	productModel.setProducts(productsApi);
-	galleryEl.addEventListener('click', (event) => {
-		const target = event.target as HTMLElement;
-		const cardEl = target.closest('.gallery__item');
-
-		const titleEl = cardEl.querySelector('.card__title');
-		const title = titleEl.textContent.trim();
-		const product = productModel.getProductByTitle(title);
-
-		const productView = new ProductView(product, eventEmitter);
-		modalCurrentView = 'product';
-		modal.setContent(productView.render(cartModel));
-		modal.open();
-	});
-}
-
-// Отображение корзины
-function showBasket() {
-	modalCurrentView = 'basket';
-	modal.setContent(basketView.render(() => showOrderStep()));
-	modal.open();
 }
 
 // Отображение оформления оплаты
 function showOrderStep() {
 	modalCurrentView = 'order';
-	modal.setContent(orderView.render(() => showContactsStep()));
+	const errorMessages = orderModel.validateOrder();
+	modal.setContent(
+		orderView.render(
+			'',
+			'',
+			errorMessages.length === 0,
+			errorMessages.join(', '),
+			() => showContactsStep()
+		)
+	);
 	modal.open();
 }
 
 // Отображение контактов
 function showContactsStep() {
 	modalCurrentView = 'contacts';
-	modal.setContent(contactsView.render(() => modal.close()));
+	const errorMessages = orderModel.validateContacts();
+	modal.setContent(
+		contactsView.render(
+			'',
+			'',
+			errorMessages.length === 0,
+			errorMessages.join(', '),
+			() => modal.close()
+		)
+	);
 	modal.open();
 }
 
 // Отображение успешного завершения заказа
 function showSuccessStep(total: number) {
 	modalCurrentView = 'success';
-	successView.total = total;
-	modal.setContent(successView.render());
+	modal.setContent(successView.render(total));
 	modal.open();
 }
 
 // События
+
+// Отображение подробностей о товаре
+eventEmitter.on('product:open', (title) => {
+	const product = productModel.getProductByTitle(title);
+	modalCurrentView = 'product';
+	modal.setContent(productView.render(product, cartModel.hasItem(product.id)));
+	modal.open();
+});
+
+// Отображение корзины
+eventEmitter.on('cart:open', () => {
+	modalCurrentView = 'basket';
+	modal.setContent(basketView.render(cartModel, () => showOrderStep()));
+	modal.open();
+});
 
 // Обновление корзины
 eventEmitter.on('cart:update', (itemsCount) => {
@@ -97,12 +109,14 @@ eventEmitter.on('cart:update', (itemsCount) => {
 // Добавление/удаление товара
 eventEmitter.on('cart:add', (product) => {
 	cartModel.addItem(product);
+	eventEmitter.emit('cart:update', cartModel.getItems().length);
 });
 eventEmitter.on('cart:remove', (productId) => {
 	cartModel.removeItem(productId);
 	if (modalCurrentView === 'basket') {
-		modal.setContent(basketView.render(() => showOrderStep()));
+		modal.setContent(basketView.render(cartModel, () => showOrderStep()));
 	}
+	eventEmitter.emit('cart:update', cartModel.getItems().length);
 });
 
 // Очистка корзины
@@ -124,11 +138,7 @@ eventEmitter.on('order:update', (data) => {
 	if ('address' in data) orderModel.setAddress(data.address);
 
 	const errorMessages = orderModel.validateOrder();
-
-	eventEmitter.emit('order:validation', {
-		isValid: errorMessages.length === 0,
-		errorMessage: errorMessages.join(', '),
-	});
+	orderView.validation(errorMessages.length === 0, errorMessages.join(', '));
 });
 
 // Обновление контактных данных
@@ -137,11 +147,7 @@ eventEmitter.on('contacts:update', (data) => {
 	if ('phone' in data) orderModel.setPhone(data.phone);
 
 	const errorMessages = orderModel.validateContacts();
-
-	eventEmitter.emit('contacts:validation', {
-		isValid: errorMessages.length === 0,
-		errorMessage: errorMessages.join(', '),
-	});
+	contactsView.validation(errorMessages.length === 0, errorMessages.join(', '));
 });
 
 // Отправка заказа на сервер
@@ -168,7 +174,3 @@ eventEmitter.on('order:fail', (error) => {
 });
 
 loadAndShowProducts();
-const basketBtn = document.querySelector('.header__basket');
-basketBtn.addEventListener('click', () => {
-	showBasket();
-});
